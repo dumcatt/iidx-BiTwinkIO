@@ -1,38 +1,33 @@
 #include <Arduino.h>
-
 #define PIN_INPUT 2
 #define PIN_EN 3
 #define PIN_OUTPUT 4
 #define PIN_CLOCK 5
-
 #define TEXT_BUF 64
-#define TEXT_UPDATE_INTERVAL 1000
+#define TEXT_UPDATE_INTERVAL 300
+#define SCROLL_GAP 12 // spaces between end and start when scrolling
 
-#define SLEEP_INTERVAL 1
-// #define SLEEP_MSEC
-
-#ifdef SLEEP_MSEC
-#define SLEEP() delay(SLEEP_INTERVAL)
-#else
+// 50us clock delay: reliable signal timing without excessive latency
+// Each transfer takes ~3.3ms, full I/O cycle ~56ms at 50Hz refresh
+#define SLEEP_INTERVAL 50
 #define SLEEP() delayMicroseconds(SLEEP_INTERVAL)
-#endif
 
+// How often to refresh all hardware outputs (ms)
+// 20ms = 50Hz, flicker-free. Serial is still polled every loop iteration.
+
+#define IO_REFRESH_INTERVAL 20
 // #define ENABLE_LOG
-
 #ifdef ENABLE_LOG
 #define LOG(...) Serial.print(__VA_ARGS__)
 #else
 #define LOG(...) do {} while(0)
 #endif
-
 // TODO: Make sure the bitfield order is correct under AVR GCC
-
 typedef union twinkle {
     struct {
       unsigned int first : 4;
       unsigned int second : 4;
     } slider;
-
     struct {
       unsigned int p1_start : 1;
       unsigned int p2_start : 1;
@@ -41,7 +36,6 @@ typedef union twinkle {
       unsigned int credit_counter : 1;
       unsigned int filler : 3;
     } buttons;
-
     struct {
       unsigned int lamp3 : 1;
       unsigned int lamp2 : 1;
@@ -52,15 +46,12 @@ typedef union twinkle {
       unsigned int lamp6 : 1;
       unsigned int lamp7 : 1;
     } spotlights;
-
     struct {
       unsigned int neon_on : 1;
       unsigned int filler : 7;
     } neon;
-
     uint8_t raw;
 } twinkle;
-
 enum known_addresses {
   // Inputs
   INPUT_BUTTONS = 0x07, // effector / sys button status
@@ -83,7 +74,6 @@ enum known_addresses {
   OUTPUT_SPOTLIGHTS = 0x87, // Spotlights (76540123)
   OUTPUT_NEON = 0x8f // Neon (only first bit?)
 };
-
 uint8_t addr_16seg[9] = {
   OUTPUT_16SEG_1,
   OUTPUT_16SEG_2,
@@ -95,7 +85,6 @@ uint8_t addr_16seg[9] = {
   OUTPUT_16SEG_8,
   OUTPUT_16SEG_9,
 };
-
 // TODO: lamp output format might not match button input format
 twinkle button_input;
 uint8_t turntable_p1;
@@ -103,23 +92,53 @@ uint8_t turntable_p2;
 twinkle slider_1_2;
 twinkle slider_3_4;
 twinkle slider_5;
-
 char text_buffer[TEXT_BUF];
 uint8_t text_length;
 uint8_t text_index;
+char serial_buf[TEXT_BUF];
+uint8_t serial_buf_idx = 0;
+unsigned long text_last_update = 0;
 
+// ---- Static text list ----
+// Text matching any entry here will be centered and not scroll.
+// Add or remove entries as needed. Max 9 characters each.
+const char* static_texts[] = {
+  "*********",
+  "DEMO PLAY",
+  "WELCOME",
+  "ENTRY",
+  "DECIDE!",
+  "MODE?",
+  "STAY COOL",
+  "TUTORIAL",
+  // Add more static texts below:
+  // "READY",
+  // "HELLO",
+};
+const uint8_t static_texts_count = sizeof(static_texts) / sizeof(static_texts[0]);
+
+int get_static_text_offset() {
+  if (text_length > 9) return -100;
+  for (uint8_t j = 0; j < static_texts_count; j++) {
+    char *match = strstr(text_buffer, static_texts[j]);
+    if (match != NULL) {
+      // Properly center the matched substring on the 9-segment display
+      int match_len = strlen(static_texts[j]);
+      int target_segment = (9 - match_len) / 2;
+      int match_idx = match - text_buffer;
+      return target_segment - match_idx;
+    }
+  }
+  return -100;
+}
 bool send_address(uint8_t address) {
   int i;
   bool is_ack = false;
-
   address |= 7;
-
   LOG("send_address begin\n"
                "DO ");
   LOG(digitalRead(PIN_INPUT));
-
   LOG("\naddr ");
-
   for (i=7;i>=0; i--) {
     digitalWrite(PIN_CLOCK, LOW);
     LOG((address >> i) & 1);
@@ -128,23 +147,18 @@ bool send_address(uint8_t address) {
     digitalWrite(PIN_CLOCK, HIGH);
     SLEEP();
   }
-
   LOG("\nACK ");
   is_ack = !digitalRead(PIN_INPUT);
   LOG(is_ack);
   LOG("\n");
   return is_ack;
 }
-
 uint8_t exchange_data(uint8_t send_data) {
   uint8_t recv_data = 0;
   int i;
-
   send_data = ~send_data;
-
   LOG("exchange_data begin\n"
                "Data Out ");
-
   for (i=7; i>=0; i--) {
     digitalWrite(PIN_CLOCK, LOW);
     LOG((send_data >> i) & 1);
@@ -154,14 +168,11 @@ uint8_t exchange_data(uint8_t send_data) {
     recv_data |= digitalRead(PIN_INPUT) << i;
     SLEEP();
   }
-
   LOG("\nData In ");
   LOG(recv_data, BIN);
   LOG("\n");
-
   return recv_data;
 }
-
 uint8_t transfer(uint8_t address, uint8_t send_data) {
   uint8_t recv_data;
   
@@ -172,66 +183,101 @@ uint8_t transfer(uint8_t address, uint8_t send_data) {
   recv_data = exchange_data(send_data);
   digitalWrite(PIN_EN, HIGH);
   SLEEP();
-
   return recv_data;
 }
-
-void text_update() {
-  static unsigned long text_last_update = 0;
-
-  int i;
-
-  if (millis() - text_last_update >= TEXT_UPDATE_INTERVAL) {
-  text_last_update = millis();
-    if (++text_index == text_length) {
-      text_index = 0;
+void serial_read() {
+  while (Serial.available() > 0) {
+    char c = Serial.read();
+    if (c == '.') c = 'm';
+    if (c == '\n' || c == '\r') {
+      if (serial_buf_idx > 0) {
+        serial_buf[serial_buf_idx] = '\0';
+        memcpy(text_buffer, serial_buf, serial_buf_idx + 1);
+        text_length = serial_buf_idx;
+        // Start scrolling text on the 3rd segment (index 2)
+        // Static text ignores text_index, so this is safe for both paths
+        text_index = text_length + SCROLL_GAP - 2;
+        text_last_update = millis(); // reset scroll timer so first frame doesn't skip
+        Serial.print("displaying ");
+        Serial.println(text_buffer);
+        serial_buf_idx = 0;
+      }
+    } else if (serial_buf_idx < TEXT_BUF - 1) {
+      serial_buf[serial_buf_idx++] = c;
     }
   }
-
-  for (i=0; i<9; i++) {
-    transfer(
-      addr_16seg[i],
-      (i + text_index) >= text_length ? 0x20 : text_buffer[i + text_index]
-    );
+}
+void text_update() {
+  int i;
+  int static_offset = get_static_text_offset();
+  
+  if (static_offset != -100) {
+    // Static text: position the matched substring at the targeted segment
+    for (i=0; i<9; i++) {
+      int idx = i - static_offset;
+      transfer(
+        addr_16seg[i],
+        (idx >= 0 && idx < text_length) ? text_buffer[idx] : 0x20
+      );
+    }
+  } else {
+    // Long text: autoscroll (circular, like a wheel)
+    int virtual_len = text_length + SCROLL_GAP;
+    if (millis() - text_last_update >= TEXT_UPDATE_INTERVAL) {
+      text_last_update = millis();
+      if (++text_index >= virtual_len) {
+        text_index = 0;
+      }
+    }
+    for (i=0; i<9; i++) {
+      int pos = (i + text_index) % virtual_len;
+      transfer(
+        addr_16seg[i],
+        pos < text_length ? text_buffer[pos] : 0x20
+      );
+    }
   }
 }
-
 void setup() {
   twinkle spotlights = {.spotlights={1, 1, 1, 1, 1, 1, 1, 1}};
   twinkle neon = {.neon={1, 0x7f}};
-
-  Serial.begin(9600);
-
+  Serial.begin(115200);
+  
   pinMode(PIN_CLOCK, OUTPUT);
   pinMode(PIN_EN, OUTPUT);
   pinMode(PIN_OUTPUT, OUTPUT);
   pinMode(PIN_INPUT, INPUT);
-
   digitalWrite(PIN_CLOCK, HIGH);
   digitalWrite(PIN_EN, HIGH);
-
   transfer(
     OUTPUT_SPOTLIGHTS,
     spotlights.raw
   );
-
   transfer(
     OUTPUT_NEON,
     neon.raw
   );
-
-  strcpy(text_buffer, "HELLO - WORLD !");
-  text_length = 15;
+  memset(text_buffer, '*', 9);
+  text_buffer[9] = '\0';
+  text_length = 9;
   text_index = 0;
-
-  delay(3000);
+  Serial.println("ready");
 }
-
 void loop() {
+  static unsigned long last_io_refresh = 0;
+  // Always check serial — this is near-instant (no hardware I/O)
+  serial_read();
+  // Rate-limit hardware I/O to avoid hammering the bus
+  // Between refreshes the loop just polls serial, keeping latency low
+  unsigned long now = millis();
+  if (now - last_io_refresh < IO_REFRESH_INTERVAL) {
+    return;
+  }
+  last_io_refresh = now;
+  // --- Everything below runs at IO_REFRESH_INTERVAL (default 20ms / 50Hz) ---
   static unsigned long spotlights_last_update = 0;
   static int spotlight_idx = 0;
   static twinkle spotlights = {.spotlights={0, 0, 0, 1, 0, 0, 0, 0}};
-
   if (millis() - spotlights_last_update > 1000) {
     spotlights_last_update = millis();
     spotlight_idx = spotlight_idx == 7 ? 0 : spotlight_idx + 1;
@@ -263,18 +309,15 @@ void loop() {
       break;
     }
   }
-
   button_input.raw = transfer(INPUT_BUTTONS, 0xff);
   turntable_p1 = transfer(INPUT_TT_P1, 0xff);
   turntable_p2 = transfer(INPUT_TT_P2, 0xff);
   slider_1_2.raw = transfer(INPUT_VOL_1_2, 0xff);
   slider_3_4.raw = transfer(INPUT_VOL_3_4, 0xff);
   slider_5.raw = transfer(INPUT_VOL_5, 0xff);
-
   transfer(OUTPUT_SPOTLIGHTS, spotlights.raw);
   transfer(OUTPUT_NEON, spotlight_idx % 2 ? 0 : (twinkle){.neon = {
     .neon_on = 1, .filler = 0
   }}.raw);
-
   text_update();
 }

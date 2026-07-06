@@ -2,14 +2,13 @@
 Arduino implementation of Twinkle IO interface.
 
 ## What is this?
-This project allows your arduino to control Sub-IO, or effector panel (16-segment displays) and top lights (spotlights, neons) on your Beatmania IIDX Deluxe cabinet, independently from an official IO, without rewiring anything.
-
-Additionally, it also allows you to read slider values, and if your cab is from Twinkle era (grey door), front plate button inputs and turntable position as well (only if it doesn't have a bypass cable installed, which it probably does).
+This project allows your arduino to control Sub-IO (16-segment displays) on your Beatmania IIDX Deluxe cabinet, independently from an official IO, without rewiring anything.
 
 This project is helpful if:
 
 * You are using a third-party or modified IO board that doesn't have the ability to control Sub-IO
 * You have just the effector plate lying around and want to display something on the ticker
+* [You are on BI2X firmware and want to keep the ticker functional](https://github.com/dumcatt/TickerHookSerial)
 
 ## How do I use it?
 ### Hardware
@@ -17,7 +16,7 @@ You will need:
 * **Arduino** (or any compatible board, preferably with 5v logic level and 3.3v power out)
   * Some means to step down the VCC voltage to something lower if it doesn't have 3.3v out
 * **RJ-45 breakout board** (or DIN8 if your cab uses that)
-* Optionally, **RS-422 module** for receiving inputs
+
 
 ---
 
@@ -54,14 +53,7 @@ Your new IO board should be ready.
 ### Software
 **Using Arduino IDE**
 
-Save [`main.cpp`](./src/main.cpp) as `.ino` file, and upload it like usual. No external libraries are needed.
-
-**Using PlatformIO**
-
-The project is set to build for Arduino Pro Micro 5v, but it should work on other arduino-compatible board without any modification. Build and upload like you normally would (e.g. `pio run -t upload`).
-
-## I wanna use slider inputs / control lights in my program!
-While the code doesn't really implement communication with PC to send/receive data, serial works just fine and it still periodically reads all outputs from Sub-IO. You can probably write some code that will send these data to PC via serial.
+Clone the repo and open main.ino
 
 ## Resources
 * [75ALS1178 datasheet](https://www.ti.com/lit/ds/symlink/sn75als1178.pdf)
@@ -80,3 +72,12 @@ While the code doesn't really implement communication with PC to send/receive da
 * [@smf-](https://github.com/smf-) for MAME Twinkle PCB implementation, this was the most crucial resource!
 * [@shizmob](https://github.com/shizmob) for maintaining an amazing community resource
 * [Zenith Arcade](https://zenitarcade.com) for the resource and access to the cab
+* [@KokoseiJ](https://github.com/KokoseiJ/iidx-twinkIO/blob/master/src/main.cpp) for the original iidx-twinkIO code
+* [@Radioo](https://github.com/Radioo/TickerHook) for TickerHook
+
+## USING WITH [TickerHookSerial](https://github.com/dumcatt/TickerHookSerial)
+In `tickerhook.conf` change `PORT` to your arduino's COM port.
+
+## TODO
+- Lights and Neons
+- better game hooking
