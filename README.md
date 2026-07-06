@@ -1,5 +1,5 @@
 # iidx-twinkIO
-Arduino implementation of Twinkle IO interface.
+Arduino implementation of Twinkle IO interface with Serial communication.
 
 ## What is this?
 This project allows your arduino to control Sub-IO (16-segment displays) on your Beatmania IIDX Deluxe cabinet, independently from an official IO, without rewiring anything.
@@ -77,7 +77,9 @@ Clone the repo and open main.ino
 
 ## USING WITH [TickerHookSerial](https://github.com/dumcatt/TickerHookSerial)
 In `tickerhook.conf` change `PORT` to your arduino's COM port.
+<img width="303" height="82" alt="image" src="https://github.com/user-attachments/assets/27b98a7f-64c7-48c6-952d-843f87230e29" />
 
 ## TODO
+- Stable tickers
 - Lights and Neons
 - better game hooking
