@@ -77,6 +77,7 @@ Clone the repo and open main.ino
 
 ## USING WITH [TickerHookSerial](https://github.com/dumcatt/TickerHookSerial)
 In `tickerhook.conf` change `PORT` to your arduino's COM port.
+
 <img width="303" height="82" alt="image" src="https://github.com/user-attachments/assets/27b98a7f-64c7-48c6-952d-843f87230e29" />
 
 ## TODO
