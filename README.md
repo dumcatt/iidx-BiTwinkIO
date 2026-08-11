@@ -1,8 +1,10 @@
 # iidx-twinkIO
 Arduino implementation of Twinkle IO interface with Serial communication.
 
+### [Demo Video](https://twitter.com/realStepdog/status/2074174908985438504)
 ## What is this?
 This project allows your arduino to control Sub-IO (16-segment displays) on your Beatmania IIDX Deluxe cabinet, independently from an official IO, without rewiring anything.
+
 
 This project is helpful if:
 
