@@ -71,8 +71,7 @@ Your new IO board should be ready.
 ### Software
 **Using Arduino IDE**
 
-Clone the repo and open main.ino
-
+Clone the repo and open `main.ino` and then flash the code on to your arduino.
 ## Displaying your own messages
 Connect to the Arduino with Arduino IDE (or a serial console of your choice) with your Arduino's COM port and the baudrate of `115200`
 
