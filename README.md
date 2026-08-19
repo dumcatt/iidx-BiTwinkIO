@@ -37,6 +37,22 @@ Wirings for the RJ-45 port is as follows:
 
 If you have a newer cab that uses DIN8 instead, you may try the [conversion pinout written in arcade-docs](https://github.com/shizmob/arcade-docs/blob/main/konami/io/GEC02/pwb-aa.md) and adapt it to match the pinout. I haven't tested it myself, but if anyone ends up getting this to work, please report back!
 
+Wirings for the Mini DIN-8 port on the subIO is as follows:
+
+| DIN-8 | Arduino Pin |
+| :---: | :---: |
+| 1 | 2 |
+| 2 | 2 |
+| 3 | 3v3 |
+| 4 | 3 |
+| 5 | 3v3 |
+| 6 | 4 |
+| 7 | 3v3 |
+| 8 | 5 |
+| Shield | GND |
+<img width="289" height="289" alt="image" src="https://github.com/user-attachments/assets/3aa49258-e80d-4eb2-a3b9-8d0b9307697e" />
+
+
 `Data Input` pins may be ignored if you don't need to receive inputs from the board. If you do, then you need to connect them to an RS-422 module, and wire the output to `Data Input` pin on Arduino.
 
 **You will connect all 3 `B` pins to 3.3v** (or any voltage that is lower than what your Arduino HIGH voltage is, but higher than 0v).
