@@ -73,6 +73,21 @@ Your new IO board should be ready.
 
 Clone the repo and open main.ino
 
+## Displaying your own messages
+Connect to the Arduino with Arduino IDE (or a serial console of your choice) with your Arduino's COM port and the baudrate of `115200`
+
+Send a message in the console and it should show up on your display.
+
+## How to use with [TickerHookSerial](https://github.com/dumcatt/TickerHookSerial)
+In `tickerhook.conf` change `PORT` to your arduino's COM port.
+
+<img width="303" height="82" alt="image" src="https://github.com/user-attachments/assets/27b98a7f-64c7-48c6-952d-843f87230e29" />
+
+## TODO
+- Stable tickers
+- Lights and Neons
+- better game hooking
+
 ## Resources
 * [75ALS1178 datasheet](https://www.ti.com/lit/ds/symlink/sn75als1178.pdf)
   * 75ALS1178 is the RS-422 chipset used in Sub-IO.
@@ -93,12 +108,4 @@ Clone the repo and open main.ino
 * [@KokoseiJ](https://github.com/KokoseiJ/iidx-twinkIO/blob/master/src/main.cpp) for the original iidx-twinkIO code
 * [@Radioo](https://github.com/Radioo/TickerHook) for TickerHook
 
-## USING WITH [TickerHookSerial](https://github.com/dumcatt/TickerHookSerial)
-In `tickerhook.conf` change `PORT` to your arduino's COM port.
 
-<img width="303" height="82" alt="image" src="https://github.com/user-attachments/assets/27b98a7f-64c7-48c6-952d-843f87230e29" />
-
-## TODO
-- Stable tickers
-- Lights and Neons
-- better game hooking
