@@ -78,7 +78,7 @@ Connect to the Arduino with Arduino IDE (or a serial console of your choice) wit
 Send a message in the console and it should show up on your display.
 
 ### Issues
-This project has only been tested with a newer (Renesas RX62 MCU) SubIO board and does not work on older (XILINX SPARTAN FPGA) SubIO boards.
+This project has only been tested with a newer (Renesas RX62 MCU) SubIO board and may not work on older (XILINX SPARTAN FPGA) SubIO boards so ymmv.
 
 
 <img width="300" alt="image" src="https://github.com/user-attachments/assets/5b1b2fbc-0c19-4b6d-9edf-4f954ef5f49a" /><img width="200" alt="image" src="https://github.com/user-attachments/assets/f0a274a1-7cbb-4074-aa9e-fbb93ecdb2b5" />
